@@ -1,0 +1,4 @@
+.snakemake/
+build/
+notebooks/generated/
+workflow/envs/venv/

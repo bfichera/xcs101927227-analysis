@@ -1,0 +1,77 @@
+configfile: "config/analyses.yaml"
+
+
+PYTHON = "workflow/envs/venv/bin/python"
+JUPYTEXT = "workflow/envs/venv/bin/jupytext"
+
+
+def runs_from_ranges(ranges, analysis_name, range_type):
+    runs = set()
+    for first_run, last_run in ranges:
+        if first_run > last_run:
+            raise ValueError(
+                f"Invalid {range_type} [{first_run}, {last_run}] "
+                f"for analysis {analysis_name}"
+            )
+        runs.update(range(first_run, last_run + 1))
+    return runs
+
+
+RUN_TO_ANALYSIS = {}
+for analysis in config["analyses"]:
+    analysis_runs = runs_from_ranges(
+        analysis["run_ranges"], analysis["name"], "run range"
+    )
+    skipped_runs = runs_from_ranges(
+        analysis.get("skip_run_ranges", []),
+        analysis["name"],
+        "skip run range",
+    )
+    for run in analysis_runs - skipped_runs:
+        if run in RUN_TO_ANALYSIS:
+            raise ValueError(
+                f"Run {run} belongs to both {RUN_TO_ANALYSIS[run]} "
+                f"and {analysis['name']}"
+            )
+        RUN_TO_ANALYSIS[run] = analysis["name"]
+
+
+RUNS = [f"{run:04d}" for run in sorted(RUN_TO_ANALYSIS)]
+RUN_PATTERN = "|".join(RUNS)
+
+
+wildcard_constraints:
+    run=RUN_PATTERN
+
+
+rule all:
+    input:
+        expand("notebooks/generated/run_{run}.ipynb", run=RUNS)
+
+
+rule render_source:
+    input:
+        template=lambda wildcards: (
+            f"workflow/notebooks/{RUN_TO_ANALYSIS[int(wildcards.run)]}.py"
+        )
+    output:
+        temp("build/notebooks/run_{run}.py")
+    shell:
+        """
+        mkdir -p build/notebooks
+        {PYTHON} workflow/scripts/render.py \
+            {input.template:q} {output:q} {wildcards.run:q} \
+            {config[proposal_number]:q}
+        """
+
+
+rule convert_notebook:
+    input:
+        "build/notebooks/run_{run}.py"
+    output:
+        "notebooks/generated/run_{run}.ipynb"
+    shell:
+        """
+        mkdir -p notebooks/generated
+        {JUPYTEXT} --to ipynb --output {output:q} {input:q}
+        """
