@@ -4,5 +4,5 @@ analyses:
   - name: initial_setup
     run_ranges:
       - [19, 19]
-    skip_run_ranges:
-      - []
+    # skip_run_ranges:
+    #   - []
