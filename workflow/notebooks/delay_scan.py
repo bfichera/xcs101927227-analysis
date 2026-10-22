@@ -2,6 +2,7 @@ import xcs_code_stockpile as xcs
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from scipy.signal import medfilt
 
 # %%
 proposal_number = {{proposal_number}}  # noqa
@@ -78,7 +79,7 @@ for i, (tag, ax) in enumerate(axd.items()):
     for j, (roi, color) in enumerate(zip(rois, roi_colors)):
         trxrd = xcs.calc_trxrd_stats(h5, h5dict, metadata, valid, typical_dt, roi=roi)
         label = f'on/off (roi {j})' if i == 0 else None
-        ax.plot(trxrd.index, trxrd[f'on_{tag}']/trxrd[f'off_{tag}'], color=color, linestyle='-', label=label)
+        ax.plot(trxrd.index, medfilt(trxrd[f'on_{tag}']/trxrd[f'off_{tag}'], 5), color=color, linestyle='-', label=label)
     ax.set_title(tag)
 fig.legend(loc='lower right')
 fig.suptitle(f'Run {run}')
