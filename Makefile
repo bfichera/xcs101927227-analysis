@@ -6,3 +6,6 @@ check:
 
 clean:
 	rm -rf .snakemake/ build/ notebooks/generated/
+
+touch:
+	snakemake --profile profiles/local --touch

@@ -3,6 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.signal import medfilt
+from tqdm import tqdm
+
+# %%
+def slow_mean(stack, valid):
+    n = 0
+    out = np.zeros(stack.shape[1:])
+    for i in tqdm(list(range(stack.shape[0]))):
+        if valid[i]:
+            out += stack[i, ...]
+            n += 1
+    return out / n
 
 # %%
 proposal_number = {{proposal_number}}  # noqa
@@ -106,3 +117,40 @@ fig.legend(loc='lower right')
 fig.suptitle(f'Run {run}')
 fig.tight_layout()
 plt.show()
+
+# %%
+voltage_high = metadata['measured_voltage'] > 1.0
+laser_on = metadata['laser_on']
+high_and_on = (voltage_high) & (laser_on)
+off = (~voltage_high) & (~laser_on)
+stack = h5[h5dict.stack]
+
+# %%
+mean_on = slow_mean(stack, high_and_on)
+mean_off = slow_mean(stack, off)
+diff = mean_on / mean_off - 1.0
+
+# %%
+fig, axd = plt.subplot_mosaic([['diff', 'on', 'off']], figsize=(12, 12))
+axd['diff'].imshow(diff, cmap='RdBu_r', vmin=np.nanpercentile(diff, 1), vmax=np.nanpercentile(diff, 99))
+axd['on'].imshow(mean_on, vmin=np.nanpercentile(mean_on, 1), vmax=np.nanpercentile(mean_on, 99))
+axd['off'].imshow(mean_off, vmin=0.0, vmax=3.0)
+
+axd['diff'].set_title('on/off-1: jungfrau (zoomed)')
+axd['on'].set_title('on shots: jungfrau (zoomed)')
+axd['off'].set_title('off shots: jungfrau (zoomed)')
+
+fig.tight_layout()
+fig.show()
+
+# %%
+xcs.save_movie(
+    h5,
+    h5dict,
+    metadata,
+    valid,
+    typical_dt,
+    f'/sdf/home/b/bfichera/xcs101927227/results/bfichera/xcs101927227-analysis/movies/run_{run:04d}',
+    '',
+    roi=None
+)
